@@ -35,25 +35,44 @@ def main():
     print("Done!")
 
 def export_phandle_vars(content: str):
-    phandle_var_pattern = re.compile(r'^( |\t)*(.+?) = <&.+?>;$', re.MULTILINE)
-    matches = re.findall(phandle_var_pattern, content)
+    var_pattern = re.compile(r'^( |\t)*(.+?) = <(.+?)>;$')
+    phandle_vars = set()
+
+    for line in content.splitlines():
+        if not "&" in line:
+            continue
+
+        m = re.match(var_pattern, line)
+        if m is None:
+            continue
+
+        name = m.group(2)
+        value = m.group(3)
+        for i, v in enumerate(value.split(' ')):
+            if v.startswith('&'):
+                phandle_vars.add(f'{name}<{i}>')
+
+    if not os.path.isfile(PHANDLE_VARS_OUTPUT):
+        open(PHANDLE_VARS_OUTPUT, 'w').close()
 
     with open(PHANDLE_VARS_OUTPUT, 'r+') as out:
-        phandle_vars = out.readlines()
+        stored_vars = out.readlines()
 
-        added_amount = 0
-        for match in matches:
-            var_name = match[1] + '\n'
+        added_amount = len(phandle_vars)
+        for var in stored_vars:
+            var_name = var.removesuffix('\n')
             if not var_name in phandle_vars:
-                phandle_vars.append(var_name)
-                added_amount += 1
+                phandle_vars.add(var_name)
+            else:
+                added_amount -= 1
         
         # We also want 'phandle = <X>;' replaced
-        if not "phandle" in phandle_vars:
-            phandle_vars.append("phandle" + '\n')
+        if not "phandle<0>" in phandle_vars:
+            phandle_vars.add("phandle<0>")
+            added_amount += 1
 
         out.seek(0)
-        out.writelines(phandle_vars)
+        out.writelines(f'{v}\n' for v in phandle_vars)
         print(f"Added {added_amount} phandle variable names to " +
               f"{PHANDLE_VARS_OUTPUT}, adding a total of {len(phandle_vars)}")
 
@@ -131,24 +150,31 @@ def replace_phandles(content: str, out_file: str):
         var_patterns = []
         for var in phandle_vars:
             var = var.rstrip()
-            p = re.compile(r'^( |\t)*' + var + r' = <(.+?)>;$')
+            value_index = int(var[-2])
+            var = var[:-3]
+
+            value = '.+?'
+            for i in range(value_index):
+                value += ' .+?'
+
+            value = value.removesuffix('.+?') + "(.+?)"
+
+            p = re.compile(r'^( |\t)*' + var + r' = <' + value + r'(>| )')
             var_patterns.append(p)
 
         print("Replacing phandles... please wait")
+        replaced=0
         for i, line in enumerate(lines):
             for pattern in var_patterns:
                 m = re.match(pattern, line)
                 if m is None:
                     continue
 
-                # TODO
-                if " " in m.group(2):
-                    continue
-
                 sym = symbols[paths[m.group(2)].removesuffix('/')]
-                lines[i] = line.replace(f'<{m.group(2)}>;', f'<&{sym}>;')
+                lines[i] = lines[i].replace(m.group(2), f'&{sym}')
+                replaced += 1
         
-        print(f'{i} phandle references replaced with their symbol')
+        print(f'{replaced} phandle references replaced with their symbol')
         with open(out_file, 'w') as out:
             out.writelines(f'{l}\n' for l in lines)
 
