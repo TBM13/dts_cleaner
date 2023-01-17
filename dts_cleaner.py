@@ -146,39 +146,49 @@ def replace_phandles(content: str, out_file: str):
                "phandle paths, something may have gone wrong")
 
     lines = content.splitlines()
-    with open(PHANDLE_VARS_OUTPUT, 'r') as phandle_vars:
-        phandle_vars = phandle_vars.readlines()
-        var_patterns = []
-        for var in phandle_vars:
-            var = var.rstrip()
-            value_index = int(var[-2])
-            var = var[:-3]
+    with open(PHANDLE_VARS_OUTPUT, 'r') as f:
+        phandle_vars: dict[str, set[int]] = {}
+        for entry in f.readlines():
+            splitted = entry.split(';')
+            if len(splitted) != 2:
+                continue
 
-            value = '.+?'
-            for i in range(value_index):
-                value += ' .+?'
-
-            value = value.removesuffix('.+?') + "(.+?)"
-
-            p = re.compile(r'^( |\t)*' + var + r' = <' + value + r'(>| )')
-            var_patterns.append(p)
+            var = splitted[0]
+            index = splitted[1].strip()
+            index = int(index)
+            
+            phandle_vars.setdefault(var, set()).add(index)
 
         print("Replacing phandles... please wait")
         replaced=0
-        for i, line in enumerate(lines):
-            for pattern in var_patterns:
-                m = re.match(pattern, line)
-                if m is None:
+        for line_i, line in enumerate(lines):
+            m = re.match(VAR_SET_PATTERN, line)
+            if m is None:
+                continue
+
+            var_name = m.group(2)
+            value = m.group(5)
+            if not var_name in phandle_vars.keys():
+                continue
+            
+            value = value.removeprefix('<').removesuffix('>')
+            new_value = ''
+            for i, subvalue in enumerate(value.split(' ')):
+                if not i in phandle_vars[var_name]:
+                    new_value += f' {subvalue}'
                     continue
 
-                phandle = m.group(2)
+                phandle = subvalue.strip()
                 if not phandle in paths.keys():
+                    print(f'{var_name} ; {i}')
                     print(f"Warning: Couldn't find path of phandle '{phandle}'")
                     continue
 
                 sym = symbols[paths[phandle].removesuffix('/')]
-                lines[i] = lines[i].replace(m.group(2), f'&{sym}')
+                new_value += f' &{sym}'
                 replaced += 1
+
+            lines[line_i] = lines[line_i].replace(value, new_value.strip())
         
         print(f'{replaced} phandle references replaced with their symbol')
         with open(out_file, 'w') as out:
