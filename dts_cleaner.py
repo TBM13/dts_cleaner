@@ -46,7 +46,10 @@ def export_phandle_vars(content: str):
             lines_to_skip -= 1
             continue
 
-        if not "&" in line or not "=" in line:
+        if not "&" in line and not "=" in line:
+            continue
+
+        if '{' in line or '}' in line:
             continue
 
         while not line.endswith(';'):
