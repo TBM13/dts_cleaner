@@ -35,22 +35,41 @@ def main():
     print("Done!")
 
 def export_phandle_vars(content: str):
-    var_pattern = re.compile(r'^( |\t)*(.+?) = <(.+?)>;$')
+    var_pattern_1 = re.compile(r'^( |\t)*(.+?)( |\t)=( |\t)<(.+?>, <.+?)>;')
+    var_pattern_2 = re.compile(r'^( |\t)*(.+?)( |\t)=( |\t)<(.+?)>;')
     phandle_vars = set()
 
-    for line in content.splitlines():
+    lines_to_skip = 0
+    lines = content.splitlines()
+    for i, line in enumerate(lines):
+        if lines_to_skip > 0:
+            lines_to_skip -= 1
+            continue
+
+        if not "&" in line or not "=" in line:
+            continue
+
+        while not line.endswith(';'):
+            lines_to_skip += 1
+            line = line.strip() + ' ' + lines[i + lines_to_skip].strip()
+            
         if not "&" in line:
             continue
 
-        m = re.match(var_pattern, line)
+        m = re.match(var_pattern_1, line)
         if m is None:
-            continue
+            m = re.match(var_pattern_2, line)
+            if m is None:
+                # print(repr(line) + " ##")
+                continue
 
         name = m.group(2)
-        value = m.group(3)
-        for i, v in enumerate(value.split(' ')):
-            if v.startswith('&'):
-                phandle_vars.add(f'{name}<{i}>')
+        i = 0
+        for v in m.group(5).split('>, <'):
+            for v2 in v.split(' '):
+                if v2.startswith('&'):
+                    phandle_vars.add(f'{name}<{i}>')
+                i += 1
 
     if not os.path.isfile(PHANDLE_VARS_OUTPUT):
         open(PHANDLE_VARS_OUTPUT, 'w').close()
@@ -170,7 +189,12 @@ def replace_phandles(content: str, out_file: str):
                 if m is None:
                     continue
 
-                sym = symbols[paths[m.group(2)].removesuffix('/')]
+                phandle = m.group(2)
+                if not phandle in paths.keys():
+                    print(f"Warning: Couldn't find path of phandle '{phandle}'")
+                    continue
+
+                sym = symbols[paths[phandle].removesuffix('/')]
                 lines[i] = lines[i].replace(m.group(2), f'&{sym}')
                 replaced += 1
         
