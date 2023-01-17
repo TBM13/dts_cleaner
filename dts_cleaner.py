@@ -4,6 +4,8 @@ import sys
 
 PHANDLE_VARS_OUTPUT="phandles.txt"
 PHANDLE_PATTERN = re.compile(r'^( |\t)*phandle = <(.+?)>;$', re.MULTILINE)
+VAR_SET_PATTERN = re.compile(r'^( |\t)*([^\n]*?)( |\t)=( |\t)?[^;]*?(<.*?>);',
+                             re.MULTILINE | re.DOTALL)
 
 def main():
     if len(sys.argv) != 2:
@@ -35,44 +37,21 @@ def main():
     print("Done!")
 
 def export_phandle_vars(content: str):
-    var_pattern_1 = re.compile(r'^( |\t)*(.+?)( |\t)=( |\t)<(.+?>, <.+?)>;')
-    var_pattern_2 = re.compile(r'^( |\t)*(.+?)( |\t)=( |\t)<(.+?)>;')
     phandle_vars = set()
+    subvalues_pattern = re.compile(r'<(.+?)>')
 
-    lines_to_skip = 0
-    lines = content.splitlines()
-    for i, line in enumerate(lines):
-        if lines_to_skip > 0:
-            lines_to_skip -= 1
+    for match in re.findall(VAR_SET_PATTERN, content):
+        var_name = match[1]
+        value = match[4]
+
+        if not '&' in value:
             continue
 
-        if not "&" in line and not "=" in line:
-            continue
-
-        if '{' in line or '}' in line:
-            continue
-
-        while not line.endswith(';'):
-            lines_to_skip += 1
-            line = line.strip() + ' ' + lines[i + lines_to_skip].strip()
-            
-        if not "&" in line:
-            continue
-
-        m = re.match(var_pattern_1, line)
-        if m is None:
-            m = re.match(var_pattern_2, line)
-            if m is None:
-                # print(repr(line) + " ##")
-                continue
-
-        name = m.group(2)
-        i = 0
-        for v in m.group(5).split('>, <'):
-            for v2 in v.split(' '):
-                if v2.startswith('&'):
-                    phandle_vars.add(f'{name}<{i}>')
-                i += 1
+        for i, subvalues in enumerate(re.findall(subvalues_pattern, value)):
+            for i2, subvalue in enumerate(subvalues.split(' ')):
+                subvalue = subvalue.strip()
+                if subvalue.startswith('&'):
+                    phandle_vars.add(f'{var_name}<{i + i2}>')
 
     if not os.path.isfile(PHANDLE_VARS_OUTPUT):
         open(PHANDLE_VARS_OUTPUT, 'w').close()
