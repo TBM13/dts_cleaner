@@ -47,11 +47,14 @@ def export_phandle_vars(content: str):
         if not '&' in value:
             continue
 
-        for i, subvalues in enumerate(re.findall(SUBVALUES_PATTERN, value)):
-            for i2, subvalue in enumerate(subvalues.split(' ')):
+        i = 0
+        for subvalues in re.findall(SUBVALUES_PATTERN, value):
+            for subvalue in subvalues.split(' '):
                 subvalue = subvalue.strip()
                 if subvalue.startswith('&'):
-                    phandle_vars.add(f'{var_name};{i + i2}')
+                    phandle_vars.add(f'{var_name};{i}')
+                
+                i += 1
 
     if not os.path.isfile(PHANDLE_VARS_OUTPUT):
         open(PHANDLE_VARS_OUTPUT, 'w').close()
