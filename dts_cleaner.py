@@ -6,6 +6,7 @@ PHANDLE_VARS_OUTPUT="phandles.txt"
 PHANDLE_PATTERN = re.compile(r'^( |\t)*phandle = <(.+?)>;$', re.MULTILINE)
 VAR_SET_PATTERN = re.compile(r'^( |\t)*([^\n]*?)( |\t)=( |\t)?[^;]*?(<.*?>);',
                              re.MULTILINE | re.DOTALL)
+SUBVALUES_PATTERN = re.compile(r'<(.+?)>')
 
 def main():
     if len(sys.argv) != 2:
@@ -38,7 +39,6 @@ def main():
 
 def export_phandle_vars(content: str):
     phandle_vars = set()
-    subvalues_pattern = re.compile(r'<(.+?)>')
 
     for match in re.findall(VAR_SET_PATTERN, content):
         var_name = match[1]
@@ -47,11 +47,11 @@ def export_phandle_vars(content: str):
         if not '&' in value:
             continue
 
-        for i, subvalues in enumerate(re.findall(subvalues_pattern, value)):
+        for i, subvalues in enumerate(re.findall(SUBVALUES_PATTERN, value)):
             for i2, subvalue in enumerate(subvalues.split(' ')):
                 subvalue = subvalue.strip()
                 if subvalue.startswith('&'):
-                    phandle_vars.add(f'{var_name}<{i + i2}>')
+                    phandle_vars.add(f'{var_name};{i + i2}')
 
     if not os.path.isfile(PHANDLE_VARS_OUTPUT):
         open(PHANDLE_VARS_OUTPUT, 'w').close()
