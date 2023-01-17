@@ -71,8 +71,8 @@ def export_phandle_vars(content: str):
                 added_amount -= 1
         
         # We also want 'phandle = <X>;' replaced
-        if not "phandle<0>" in phandle_vars:
-            phandle_vars.add("phandle<0>")
+        if not "phandle;0" in phandle_vars:
+            phandle_vars.add("phandle;0")
             added_amount += 1
 
         out.seek(0)
