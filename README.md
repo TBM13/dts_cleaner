@@ -1,5 +1,5 @@
 # DTS Cleaner
-Comparing the differences between DTB files is quite difficult. This is how a fragment of the diff between two DTB files look like, after converting them to DTS:
+Comparing the differences between DTB files is quite difficult. This is how a fragment of the diff between two DTB files looks like, after converting them to DTS:
 
 <div align="center">
 <img src="./Images/diff1.jpg" width="700"/>
