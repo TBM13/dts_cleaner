@@ -14,7 +14,7 @@ This Python script does exactly that, making the diff easier to read:
 </div>
 
 ## Usage
-1. Grab multiple DTS files from a similar kernel source & run the script with each one: `python3 dts_cleaner.py <dts_file>`
+1. Grab multiple DTS files from a similar kernel's source & run the script with each one: `python3 dts_cleaner.py <dts_file>`
    * This allows the script to identify which values are phandles.
 2. Run the script with the DTS file you want to clean: `python3 dts_cleaner.py <dts_file>`
 3. Done! Most (if not all) phandles should've been replaced with their corresponding labels.

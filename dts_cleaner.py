@@ -11,11 +11,11 @@ SUBVALUES_PATTERN = re.compile(r'<(.+?)>')
 def main():
     if len(sys.argv) != 2:
         print("Usage: dts_cleaner.py <dts>")
-        print("This script will automatically detect if the dts" +
-              "was grabbed from the kernel source code or from a compiled DTB.\n" +
-              "In the first case, it'll write to 'phandles.txt' which variables" +
-              "are phandles, while in the second case it'll replace in a copy" +
-              "of the dts the value of these variables with their actual pointer name.")
+        print("This script will automatically detect if the DTS " +
+              "is from a kernel's source code or from a DTB.")
+        print("In the first case, it'll write to 'phandles.txt' which values are phandles. ")
+        print("In the second case, it'll output a copy of the DTS with " +
+              "the phandles replaced with their respective labels.")
         sys.exit(1)
 
     dts_path = sys.argv[1]
@@ -31,7 +31,7 @@ def main():
             export_phandle_vars(content)
         else:
             out_file = f"{dts_path}_cleaned"
-            print(f"DTS from compiled DTB detected, replacing phandles " +
+            print(f"DTS from DTB detected, replacing phandles " +
                   f"and saving to '{out_file}'...")
             replace_phandles(content, out_file)
     
